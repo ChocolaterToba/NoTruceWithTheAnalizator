@@ -1,6 +1,8 @@
 package command
 
-import "whatever/crc"
+import (
+	"whatever/crc"
+)
 
 type Command struct {
 	deviceID   byte
@@ -28,7 +30,7 @@ func (command *Command) AsBytes() []byte {
 }
 
 func ToPackage(commands []*Command) []byte {
-	result := make([]byte, len(commands)*4, 0)
+	result := make([]byte, 0, len(commands)*4)
 	for _, command := range commands {
 		result = append(result, command.AsBytes()...)
 	}
