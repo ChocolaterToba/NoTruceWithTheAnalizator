@@ -82,6 +82,9 @@ func recvInner(port *serial.Port) ([]byte, error) {
 	for time.Since(startTime) < time.Second*time.Duration(maxReadTimeout) {
 		n, err := port.Read(buff)
 		if err != nil {
+			if err.Error() == "EOF" {
+				return result, nil
+			}
 			return nil, err
 		}
 
