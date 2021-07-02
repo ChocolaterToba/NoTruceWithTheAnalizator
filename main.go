@@ -46,6 +46,6 @@ func main() {
 	neededCommand := commands["HOME"]
 	for _, subcommand := range neededCommand.Subcommands {
 		pack := command.ToPackage(subcommand.Commands)
-		boards.SendPackage(portName, pack)
+		fmt.Println(boards.SendPackage(portName, pack))
 	}
 }

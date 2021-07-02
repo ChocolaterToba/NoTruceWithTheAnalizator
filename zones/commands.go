@@ -80,12 +80,12 @@ func (codeInput *CodeInput) ToCommand(sections map[string]map[string]int16) (*co
 		return nil, customError.SectionNotFoundError
 	}
 
-	deviceID, err := strconv.Atoi(codeInput.DeviceID)
+	deviceID, err := strconv.ParseInt(codeInput.DeviceID, 16, 16)
 	if err != nil {
 		return nil, err
 	}
 
-	commandID, err := strconv.Atoi(codeInput.CommandID)
+	commandID, err := strconv.ParseInt(codeInput.CommandID, 16, 16)
 	if err != nil {
 		return nil, err
 	}
