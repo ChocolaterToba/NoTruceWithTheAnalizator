@@ -3,16 +3,16 @@ package command
 import "whatever/crc"
 
 type Command struct {
-	id         byte
-	command    byte
+	deviceID   byte
+	commandID  byte
 	dataFirst  byte
 	dataSecond byte
 }
 
-func NewCommand(id byte, command byte, dataFirst byte, dataSecond byte) *Command {
+func NewCommand(deviceID byte, commandID byte, dataFirst byte, dataSecond byte) *Command {
 	return &Command{
-		id:         id,
-		command:    command,
+		deviceID:   deviceID,
+		commandID:  commandID,
 		dataFirst:  dataFirst,
 		dataSecond: dataSecond,
 	}
@@ -20,8 +20,8 @@ func NewCommand(id byte, command byte, dataFirst byte, dataSecond byte) *Command
 
 func (command *Command) AsBytes() []byte {
 	result := make([]byte, 4)
-	result[0] = command.id
-	result[1] = command.command
+	result[0] = command.deviceID
+	result[1] = command.commandID
 	result[2] = command.dataFirst
 	result[3] = command.dataSecond
 	return result

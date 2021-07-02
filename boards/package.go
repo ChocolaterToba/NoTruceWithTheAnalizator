@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 	"whatever/crc"
-	"whatever/errors"
+	"whatever/customError"
 
 	"github.com/tarm/serial"
 )
@@ -42,7 +42,7 @@ func SendPackage(portSerial string, commands []byte) error {
 	}
 	err = parseBoardResponse(response)
 
-	for busyCounter := 0; err == errors.BoardBusyError; busyCounter++ {
+	for busyCounter := 0; err == customError.BoardBusyError; busyCounter++ {
 		if busyCounter > maxBusyLoops {
 			break
 		}
@@ -53,7 +53,7 @@ func SendPackage(portSerial string, commands []byte) error {
 		}
 		err = parseBoardResponse(response)
 
-		if err == errors.BoardReadyError {
+		if err == customError.BoardReadyError {
 			err = sendInner(port, commands)
 		}
 	}
@@ -100,7 +100,7 @@ func parseBoardResponse(response []byte) error {
 	case FSM_GARBAGE:
 		return fmt.Errorf("Could not parse response due to insufficient data")
 	case FSM_BUSY:
-		return errors.BoardBusyError
+		return customError.BoardBusyError
 	case FSM_OK:
 		return nil
 	default:

@@ -1,0 +1,16 @@
+
+
+<Config>
+    <Zones>
+        <Peltier>
+            <Hole name="A1" x="125.123" y="123.123" z_min="12.12" z_max="13.13" volume="10"/>
+        </Peltier>
+    </Zones>
+    <Logic>
+        <Command name="HOME">
+            <Subcommand name="PeltierHome" zone="Peltier">
+                <Code var="x" section="A1" deviceID="3">10</Code>
+            </Subcommand>
+        </Command>
+    </Logic>
+</Config>
