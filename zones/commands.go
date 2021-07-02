@@ -15,19 +15,19 @@ type CommandInput struct {
 
 type Command struct {
 	Name        string
-	Subcommands map[string]*Subcommand
+	Subcommands []*Subcommand
 }
 
 func (commandInput *CommandInput) ToCommand(defaults map[string]*Zone) (*Command, error) {
 	result := new(Command)
 	result.Name = commandInput.Name
-	result.Subcommands = make(map[string]*Subcommand)
+	result.Subcommands = make([]*Subcommand, 0, len(commandInput.Subcommands))
 	for _, subcommandInput := range commandInput.Subcommands {
 		newSubcommand, err := subcommandInput.ToSubcommand(defaults)
 		if err != nil {
 			return nil, err
 		}
-		result.Subcommands[newSubcommand.Name] = newSubcommand
+		result.Subcommands = append(result.Subcommands, newSubcommand)
 	}
 	return result, nil
 }
@@ -42,7 +42,7 @@ type SubcommandInput struct {
 
 type Subcommand struct {
 	Name     string
-	Commands []command.Command
+	Commands []*command.Command
 }
 
 func (subcommandInput *SubcommandInput) ToSubcommand(defaults map[string]*Zone) (*Subcommand, error) {
@@ -53,14 +53,14 @@ func (subcommandInput *SubcommandInput) ToSubcommand(defaults map[string]*Zone) 
 		return nil, customError.ZoneNotFoundError
 	}
 
-	result.Commands = make([]command.Command, 0, len(subcommandInput.Codes))
+	result.Commands = make([]*command.Command, 0, len(subcommandInput.Codes))
 	for _, codeInput := range subcommandInput.Codes {
 		command, err := codeInput.ToCommand(zone.Sections)
 		if err != nil {
 			return nil, err
 		}
 
-		result.Commands = append(result.Commands, *command)
+		result.Commands = append(result.Commands, command)
 	}
 
 	return result, nil
