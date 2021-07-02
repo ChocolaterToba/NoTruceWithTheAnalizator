@@ -1,8 +1,14 @@
 <Config>
     <Zones>
-        <Peltier>
-            <Hole name="A1" x="125.123" y="123.123" z_min="12.12" z_max="13.13" volume="10"/>
-        </Peltier>
+        <Zone name="Peltier">
+            <Section name="A1">
+                <Var name="x">125.123</Var>
+                <Var name="y">123.123</Var>
+                <Var name="z_min">12.12</Var>
+                <Var name="z_max">13.13</Var>
+                <Var name="volume">10</Var>
+            </Section>
+        </Zone>
     </Zones>
     <Logic>
         <Command name="HOME">

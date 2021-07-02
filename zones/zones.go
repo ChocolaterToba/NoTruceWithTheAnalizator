@@ -2,20 +2,50 @@ package zones
 
 import (
 	"encoding/xml"
-	"io/ioutil"
-	"os"
+	"strconv"
+	"strings"
 )
 
-type LogicsInput struct {
-	XMLName  xml.Name       `xml:"Logic"`
-	Commands []CommandInput `xml:"Command"`
+func parseNumericalVariables(input string) (int16, error) {
+	if strings.ContainsRune(input, '.') {
+		parts := strings.SplitN(input, ".", 2)
+		resultHigh, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return -1, err
+		}
+
+		resultLow, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return -1, err
+		}
+
+		return int16(resultHigh<<8 + resultLow), nil
+	}
+
+	result, err := strconv.ParseInt(input, 16, 16)
+	if err != nil {
+		return -1, err
+	}
+	return int16(result), nil
 }
 
-func (logicsinput *LogicsInput) ToCommands(defaults map[string]*Zone) (map[string]*Command, error) {
-	result := make(map[string]*Command) // TODO: fix referencing and stuff
+type SectionInput struct {
+	XMLName xml.Name   `xml:"Section"`
+	Name    string     `xml:"name,attr"`
+	Vars    []VarInput `xml:"Var"`
+}
+
+type VarInput struct {
+	XMLName xml.Name `xml:"Var"`
+	Name    string   `xml:"name,attr"`
+	Value   string   `xml:",chardata"`
+}
+
+func (sectionInput *SectionInput) ToSection() (map[string]int16, error) {
+	result := make(map[string]int16)
 	var err error
-	for _, command := range logicsinput.Commands {
-		result[command.Name], err = command.ToCommand(defaults)
+	for _, varInput := range sectionInput.Vars {
+		result[varInput.Name], err = parseNumericalVariables(varInput.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -24,50 +54,29 @@ func (logicsinput *LogicsInput) ToCommands(defaults map[string]*Zone) (map[strin
 	return result, nil
 }
 
-type ZonesInput struct {
-	XMLName     xml.Name         `xml:"Zones"`
-	PeltierZone PeltierZoneInput `xml:"Peltier"`
+type ZoneInput struct {
+	XMLName  xml.Name       `xml:"Zone"`
+	Name     string         `xml:"name,attr"`
+	Sections []SectionInput `xml:"Section"`
 }
 
-func (zonesInput *ZonesInput) ToZones() (map[string]*Zone, error) {
-	result := make(map[string]*Zone)
-	var err error
-	result["Peltier"], err = zonesInput.PeltierZone.ToZone()
-	if err != nil {
-		return nil, err
+type Zone struct {
+	Name     string
+	Sections map[string]map[string]int16
+}
+
+func (zoneInput *ZoneInput) ToZone() (*Zone, error) {
+	result := new(Zone)
+	result.Name = "Peltier"
+	result.Sections = make(map[string]map[string]int16)
+	for _, sectionInput := range zoneInput.Sections {
+		section, err := sectionInput.ToSection()
+		if err != nil {
+			return nil, err
+		}
+
+		result.Sections[sectionInput.Name] = section
 	}
 
 	return result, nil
-}
-
-type ZonesAndLogic struct {
-	XMLName xml.Name `xml:"Config"`
-	Zones   ZonesInput
-	Logics  LogicsInput
-}
-
-func (zonesAndLogic *ZonesAndLogic) ToCommands() (map[string]*Command, error) {
-	zones, err := zonesAndLogic.Zones.ToZones()
-	if err != nil {
-		return nil, err
-	}
-
-	return zonesAndLogic.Logics.ToCommands(zones)
-}
-
-func ParseXML(filepath string) (map[string]*Command, error) {
-	xmlFile, err := os.Open(filepath) // TODO: check for concurrency safety
-	if err != nil {
-		return nil, err
-	}
-	xmlBytes, _ := ioutil.ReadAll(xmlFile)
-	xmlFile.Close()
-
-	zonesAndLogic := new(ZonesAndLogic)
-	err = xml.Unmarshal(xmlBytes, zonesAndLogic)
-	if err != nil {
-		return nil, err
-	}
-
-	return zonesAndLogic.ToCommands()
 }
