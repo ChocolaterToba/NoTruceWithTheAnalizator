@@ -71,7 +71,6 @@ func findLeftRightPorts(commands map[string]*zones.Command) (string, string, err
 
 	lrPack := []byte{1, 0, 0, 0, 0}
 	lrPack[4] = byte(crc.Checksum(lrPack[:4]))
-	fmt.Println(lrPack)
 
 	leftPort := ""
 	rightPort := ""

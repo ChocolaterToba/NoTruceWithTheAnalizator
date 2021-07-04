@@ -40,17 +40,9 @@ func SendPackage(portSerial string, commands []byte) interface{} {
 		return err
 	}
 
-	response, err := recvInner(port)
-	if err != nil {
-		return err
-	}
-
-	errOrCode := parseBoardResponse(response)
-	switch errOrCode.(type) {
-	case error:
-		err = errOrCode.(error)
-	case int:
-		return errOrCode.(int)
+	code, err := recvInner(port)
+	if err == nil {
+		return code
 	}
 
 	for busyCounter := 0; err == customError.BoardBusyError; busyCounter++ {
@@ -58,21 +50,23 @@ func SendPackage(portSerial string, commands []byte) interface{} {
 			break
 		}
 
-		response, err = recvInner(port)
-		if err != nil {
-			return err
-		}
-		errOrCode = parseBoardResponse(response)
-
-		switch errOrCode.(type) {
-		case error:
-			err = errOrCode.(error)
-		case int:
-			return errOrCode.(int)
-		}
-
-		if err == customError.BoardReadyError {
+		_, err = recvInner(port)
+		switch err {
+		case customError.BoardReadyError:
 			err = sendInner(port, commands)
+			if err != nil {
+				return err
+			}
+
+			code, err = recvInner(port)
+			if err == nil {
+				return code
+			}
+			return err
+		case nil:
+			return customError.BoardBusyError
+		default:
+			// Do nothing
 		}
 	}
 
@@ -92,40 +86,42 @@ func sendInner(port *serial.Port, commands []byte) error {
 	return nil
 }
 
-func recvInner(port *serial.Port) ([]byte, error) {
+func recvInner(port *serial.Port) (int, error) {
 	result := make([]byte, 0)
 
 	startTime := time.Now()
 	buff := make([]byte, 100)
 	for time.Since(startTime) < time.Second*time.Duration(maxReadTimeout) {
-		n, err := port.Read(buff)
-		if err != nil {
-			if err.Error() == "EOF" {
-				return result, nil
-			}
-			return nil, err
-		}
-
+		n, _ := port.Read(buff)
 		if n == 0 {
 			break
 		}
 		result = append(result, buff[:n]...)
+
+		codeOrErr := parseBoardResponse(result) // TODO: only parse last something bytes
+		switch codeOrErr.(type) {
+		case int:
+			//Delete printfs in prod, unnecessary
+			fmt.Printf("Received response from port: % x\n", result)
+			fmt.Printf("Received code from port: %d\n", codeOrErr.(int))
+			return codeOrErr.(int), nil
+		case error:
+			if codeOrErr.(error) != customError.GarbageDataError {
+				fmt.Printf("Received response from port: % x\n", result)
+				return -1, codeOrErr.(error)
+			}
+		}
 	}
 
-	return result, nil
+	return -1, customError.ResponseTimeoutError
 }
 
 // returns error if code is not correct, int if it is correct
 func parseBoardResponse(response []byte) interface{} {
-	//Delete in prod, unnecessary
-	fmt.Printf("Received response from port: % x\n", response)
 	code := removeGarbage(response)
-	//Delete in prod, unnecessary
-	fmt.Printf("Received code from port: %d\n", code)
-
 	switch {
 	case code == FSM_GARBAGE:
-		return fmt.Errorf("Could not parse response due to insufficient data")
+		return customError.GarbageDataError
 	case code == FSM_BUSY:
 		return customError.BoardBusyError
 	case code >= FSM_OK_MIN && code < FSM_OK_MAX:
