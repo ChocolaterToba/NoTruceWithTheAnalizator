@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"whatever/crc"
 	"whatever/customError"
 	"whatever/zones"
 
@@ -17,9 +19,12 @@ import (
 type port struct {
 	name string
 	busy bool
+	mu   sync.Mutex
 }
 
 func (currentPort *port) lock() bool {
+	currentPort.mu.Lock()
+	defer currentPort.mu.Unlock()
 	if currentPort.busy {
 		return false
 	}
@@ -29,6 +34,8 @@ func (currentPort *port) lock() bool {
 }
 
 func (currentPort *port) unlock() bool {
+	currentPort.mu.Lock()
+	defer currentPort.mu.Unlock()
 	if !currentPort.busy {
 		return false
 	}
@@ -62,13 +69,9 @@ func findLeftRightPorts(commands map[string]*zones.Command) (string, string, err
 		return "", "", err
 	}
 
-	lrCommand, found := commands["REPLACE THIS"]
-	if !found {
-		return "", "", fmt.Errorf("Error: %s\n",
-			"Could not find command for distinguishing between left/right boards")
-	}
-	lrSubcommand := lrCommand.Subcommands[0]
-	lrPack := command.ToPackage(lrSubcommand.Commands)
+	lrPack := []byte{1, 0, 0, 0, 0}
+	lrPack[4] = byte(crc.Checksum(lrPack[:4]))
+	fmt.Println(lrPack)
 
 	leftPort := ""
 	rightPort := ""
