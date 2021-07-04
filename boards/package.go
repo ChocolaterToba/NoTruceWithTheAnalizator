@@ -32,6 +32,9 @@ func SendPackage(portSerial string, commands []byte) interface{} {
 		return err
 	}
 
+	//Delete in prod, unnecessary
+	fmt.Printf("Sending commands to port: % x\n", commands)
+
 	err = sendInner(port, commands)
 	if err != nil {
 		return err
@@ -114,13 +117,18 @@ func recvInner(port *serial.Port) ([]byte, error) {
 
 // returns error if code is not correct, int if it is correct
 func parseBoardResponse(response []byte) interface{} {
+	//Delete in prod, unnecessary
+	fmt.Printf("Received response from port: % x\n", response)
 	code := removeGarbage(response)
+	//Delete in prod, unnecessary
+	fmt.Printf("Received code from port: %d\n", code)
+
 	switch {
 	case code == FSM_GARBAGE:
 		return fmt.Errorf("Could not parse response due to insufficient data")
 	case code == FSM_BUSY:
 		return customError.BoardBusyError
-	case code > FSM_OK_MIN && code < FSM_OK_MAX:
+	case code >= FSM_OK_MIN && code < FSM_OK_MAX:
 		return code
 	default:
 		fmt.Printf("Unknown return code: %d\n", code)

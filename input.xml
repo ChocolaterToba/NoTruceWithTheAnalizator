@@ -13,7 +13,10 @@
     <Logic>
         <Command name="HOME">
             <Subcommand name="PeltierHome" zone="Peltier">
-                <Code var="x" section="A1" deviceID="3">10</Code>
+                <Code var="x" section="A1" deviceID="1">0</Code>
+            </Subcommand>
+            <Subcommand name="PeltierHomie" zone="Peltier">
+                <Code var="x" section="A1" deviceID="FA">0</Code>
             </Subcommand>
         </Command>
     </Logic>
