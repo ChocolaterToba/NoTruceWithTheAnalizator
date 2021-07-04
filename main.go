@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"whatever/customError"
 	"whatever/zones"
 
 	"whatever/boards"
@@ -42,10 +45,32 @@ func main() {
 	// send them
 	// add response to some file, idk
 
-	// let's say, hypothetically, that user asked to launch command HOME
-	neededCommand := commands["HOME"]
-	for _, subcommand := range neededCommand.Subcommands {
-		pack := command.ToPackage(subcommand.Commands)
-		fmt.Println(boards.SendPackage(portName, pack))
+	fmt.Println("Ready to receive input")
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		commandName := scanner.Text()
+		if commandName == "" { // Empty command - end of input
+			break
+		}
+
+		//TODO: prefixes
+		neededCommand, found := commands[commandName]
+		if !found {
+			fmt.Printf("Error: %s\n", customError.CommandNotFoundError)
+			continue
+		}
+
+		for _, subcommand := range neededCommand.Subcommands {
+			pack := command.ToPackage(subcommand.Commands)
+			errOrCode := boards.SendPackage(portName, pack)
+			switch errOrCode.(type) {
+			case error:
+				fmt.Printf("Error: %s\n", errOrCode.(error))
+			case int:
+				fmt.Printf("Result code: %d\n", errOrCode.(int))
+			}
+		}
 	}
+
+	fmt.Println("Exiting program")
 }

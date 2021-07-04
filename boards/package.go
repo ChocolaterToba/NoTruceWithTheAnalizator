@@ -13,14 +13,15 @@ const maxBusyLoops int = 5
 
 const (
 	FSM_GARBAGE int = -1
-	FSM_OK      int = 0
+	FSM_OK_MIN  int = 0
+	FSM_OK_MAX  int = 60000
 	FSM_BUSY    int = 65534
 	//Other errors may be added later if needed
 )
 
 const maxReadTimeout int = 100
 
-func SendPackage(portSerial string, commands []byte) error {
+func SendPackage(portSerial string, commands []byte) interface{} {
 	config := &serial.Config{
 		Name:        portSerial,
 		Baud:        19200,
@@ -40,7 +41,14 @@ func SendPackage(portSerial string, commands []byte) error {
 	if err != nil {
 		return err
 	}
-	err = parseBoardResponse(response)
+
+	errOrCode := parseBoardResponse(response)
+	switch errOrCode.(type) {
+	case error:
+		err = errOrCode.(error)
+	case int:
+		return errOrCode.(int)
+	}
 
 	for busyCounter := 0; err == customError.BoardBusyError; busyCounter++ {
 		if busyCounter > maxBusyLoops {
@@ -51,7 +59,14 @@ func SendPackage(portSerial string, commands []byte) error {
 		if err != nil {
 			return err
 		}
-		err = parseBoardResponse(response)
+		errOrCode = parseBoardResponse(response)
+
+		switch errOrCode.(type) {
+		case error:
+			err = errOrCode.(error)
+		case int:
+			return errOrCode.(int)
+		}
 
 		if err == customError.BoardReadyError {
 			err = sendInner(port, commands)
@@ -97,15 +112,16 @@ func recvInner(port *serial.Port) ([]byte, error) {
 	return result, nil
 }
 
-func parseBoardResponse(response []byte) error {
+// returns error if code is not correct, int if it is correct
+func parseBoardResponse(response []byte) interface{} {
 	code := removeGarbage(response)
-	switch code {
-	case FSM_GARBAGE:
+	switch {
+	case code == FSM_GARBAGE:
 		return fmt.Errorf("Could not parse response due to insufficient data")
-	case FSM_BUSY:
+	case code == FSM_BUSY:
 		return customError.BoardBusyError
-	case FSM_OK:
-		return nil
+	case code > FSM_OK_MIN && code < FSM_OK_MAX:
+		return code
 	default:
 		return fmt.Errorf("Unknown board error")
 	}
