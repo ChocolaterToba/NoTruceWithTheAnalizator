@@ -123,6 +123,7 @@ func parseBoardResponse(response []byte) interface{} {
 	case code > FSM_OK_MIN && code < FSM_OK_MAX:
 		return code
 	default:
+		fmt.Printf("Unknown return code: %d\n", code)
 		return fmt.Errorf("Unknown board error")
 	}
 }

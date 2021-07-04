@@ -36,7 +36,7 @@ func main() {
 	}
 	if portName == "" {
 		fmt.Println("Could not find needed port!")
-		//return
+		return
 	}
 
 	// wait for console input
