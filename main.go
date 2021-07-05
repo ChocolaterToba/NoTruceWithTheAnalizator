@@ -5,90 +5,50 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"whatever/crc"
 	"whatever/customError"
 	"whatever/zones"
 
 	"whatever/boards"
-	"whatever/command"
 
 	"go.bug.st/serial/enumerator"
 )
 
-type port struct {
-	name string
-	busy bool
-	mu   sync.Mutex
-}
-
-func (currentPort *port) lock() bool {
-	currentPort.mu.Lock()
-	defer currentPort.mu.Unlock()
-	if currentPort.busy {
-		return false
-	}
-
-	currentPort.busy = true
-	return true
-}
-
-func (currentPort *port) unlock() bool {
-	currentPort.mu.Lock()
-	defer currentPort.mu.Unlock()
-	if !currentPort.busy {
-		return false
-	}
-
-	currentPort.busy = false
-	return true
-}
-
-func (currentPort *port) sendCommand(neededCommand *zones.Command) {
-	if !currentPort.lock() {
-		fmt.Println("Error: board is busy")
-		return
-	}
-
-	defer currentPort.unlock()
-	for _, subcommand := range neededCommand.Subcommands {
-		pack := command.ToPackage(subcommand.Commands)
-		errOrCode := boards.SendPackage(currentPort.name, pack)
-		switch errOrCode.(type) {
-		case error:
-			fmt.Printf("Error: %s\n", errOrCode.(error))
-		case int:
-			fmt.Printf("Result code: %d\n", errOrCode.(int))
-		}
-	}
-}
-
-func findLeftRightPorts(commands map[string]*zones.Command) (string, string, error) {
+func findLeftRightPorts(commands map[string]*zones.Command) (*boards.Port, *boards.Port, error) {
 	ports, err := enumerator.GetDetailedPortsList()
 	if err != nil {
-		return "", "", err
+		return nil, nil, err
 	}
 
 	lrPack := []byte{1, 0, 0, 0, 0}
 	lrPack[4] = byte(crc.Checksum(lrPack[:4]))
 
-	leftPort := ""
-	rightPort := ""
+	var leftPort *boards.Port
+	var rightPort *boards.Port
 	for _, port := range ports {
 		if port.VID == "0483" && port.PID == "5740" {
-			errOrCode := boards.SendPackage(port.Name, lrPack)
+			lrPort := boards.NewPort(port.Name)
+			errOrCode := lrPort.SendPackage(lrPack)
 			switch errOrCode.(type) {
 			case error:
-				return "", "",
+				return nil, nil,
 					fmt.Errorf("Error during l/r board distinguishing: %s\n", errOrCode.(error))
 			case int:
 				switch errOrCode.(int) {
 				case 0:
-					leftPort = port.Name
+					if leftPort != nil {
+						return nil, nil,
+							fmt.Errorf("Error during l/r board distinguishing: %s\n", "multiple left ports")
+					}
+					leftPort = lrPort
 				case 1:
-					rightPort = port.Name
+					if rightPort != nil {
+						return nil, nil,
+							fmt.Errorf("Error during l/r board distinguishing: %s\n", "multiple right ports")
+					}
+					rightPort = lrPort
 				default:
-					return "", "",
+					return nil, nil,
 						fmt.Errorf("Error: unexpected l/r distinguishing response: %d\n", errOrCode.(int))
 				}
 			}
@@ -106,20 +66,13 @@ func main() {
 		return
 	}
 
-	leftPort := port{}
-	rightPort := port{}
-	leftPort.name, rightPort.name, err = findLeftRightPorts(commands)
+	leftPort, rightPort, err := findLeftRightPorts(commands)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	if leftPort.name == "" {
-		fmt.Println("Could not find left board!")
-		return
-	}
-	if rightPort.name == "" {
-		fmt.Println("Could not find right board!")
+	if leftPort == nil && rightPort == nil {
+		fmt.Println("Error: boards not found")
 		return
 	}
 
@@ -136,19 +89,34 @@ func main() {
 			continue
 		}
 
-		//TODO: prefixes
+		var currPort *boards.Port
+		switch commandLineArgs[0] {
+		case "L":
+			if leftPort == nil {
+				fmt.Println("Error: left board not found")
+				continue
+			}
+			currPort = leftPort
+		case "R":
+			if rightPort == nil {
+				fmt.Println("Error: right board not found")
+				continue
+			}
+			currPort = rightPort
+		}
+
 		neededCommand, found := commands[commandLineArgs[1]]
 		if !found {
-			fmt.Printf("Error: %s\n", customError.CommandNotFoundError)
+			switch commandLineArgs[1] {
+			case "LOAD_FROM_FILE":
+				go currPort.SendCommandsFromFile("example.txt")
+			default:
+				fmt.Printf("Error: %s\n", customError.CommandNotFoundError)
+			}
 			continue
 		}
 
-		switch commandLineArgs[0] {
-		case "L":
-			go leftPort.sendCommand(neededCommand)
-		case "R":
-			go rightPort.sendCommand(neededCommand)
-		}
+		go currPort.SendCommand(neededCommand)
 	}
 
 	fmt.Println("Exiting program")

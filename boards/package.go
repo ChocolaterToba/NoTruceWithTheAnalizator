@@ -21,7 +21,7 @@ const (
 
 const maxReadTimeout int = 100
 
-func SendPackage(portSerial string, commands []byte) interface{} {
+func sendPackage(portSerial string, commands []byte) interface{} {
 	config := &serial.Config{
 		Name:        portSerial,
 		Baud:        19200,
