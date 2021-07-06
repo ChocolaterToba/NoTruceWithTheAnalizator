@@ -20,4 +20,12 @@
             </Subcommand>
         </Command>
     </Logic>
+    <Init>
+        <Subcommand name="PeltierHome" zone="Peltier">
+            <Code var="x" section="A1" deviceID="1">0</Code>
+        </Subcommand>
+        <Subcommand name="PeltierHomie" zone="Peltier">
+            <Code var="x" section="A1" deviceID="FA">0</Code>
+        </Subcommand>
+    </Init>
 </Config>

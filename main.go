@@ -105,18 +105,43 @@ func main() {
 			currPort = rightPort
 		}
 
-		neededCommand, found := commands[commandLineArgs[1]]
-		if !found {
-			switch commandLineArgs[1] {
-			case "LOAD_FROM_FILE":
-				go currPort.SendCommandsFromFile("example.txt")
-			default:
+		switch commandLineArgs[1] {
+		case "LOAD_FROM_FILE":
+			go currPort.SendCommandsFromFile("example.txt")
+		case "INIT": // Reloads ports before executing
+			leftPort, rightPort, err := findLeftRightPorts(commands)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			if leftPort == nil && rightPort == nil {
+				fmt.Println("Error: boards not found")
+				return
+			}
+
+			switch commandLineArgs[0] {
+			case "L":
+				if leftPort == nil {
+					fmt.Println("Error: left board not found")
+					continue
+				}
+				currPort = leftPort
+			case "R":
+				if rightPort == nil {
+					fmt.Println("Error: right board not found")
+					continue
+				}
+				currPort = rightPort
+			}
+			fallthrough // So that we actually execute INIT's subcommands
+		default:
+			neededCommand, found := commands[commandLineArgs[1]]
+			if !found {
 				fmt.Printf("Error: %s\n", customError.CommandNotFoundError)
 			}
-			continue
-		}
 
-		go currPort.SendCommand(neededCommand)
+			go currPort.SendCommand(neededCommand)
+		}
 	}
 
 	fmt.Println("Exiting program")
