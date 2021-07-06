@@ -103,6 +103,9 @@ func main() {
 				continue
 			}
 			currPort = rightPort
+		default:
+			fmt.Printf("Error: incorrect prefix, must be L or R: %s\n", commandLineArgs[0])
+			continue
 		}
 
 		switch commandLineArgs[1] {
@@ -132,12 +135,16 @@ func main() {
 					continue
 				}
 				currPort = rightPort
+			default:
+				fmt.Printf("Error: incorrect prefix, must be L or R: %s\n", commandLineArgs[0])
+				continue
 			}
 			fallthrough // So that we actually execute INIT's subcommands
 		default:
 			neededCommand, found := commands[commandLineArgs[1]]
 			if !found {
 				fmt.Printf("Error: %s\n", customError.CommandNotFoundError)
+				continue
 			}
 
 			go currPort.SendCommand(neededCommand)
