@@ -109,6 +109,38 @@ func runCommand(isLeftPort bool, commandName string) error {
 	return nil
 }
 
+type LedType int
+
+const (
+	RedLed LedType = iota
+	GreenLed
+	BlueLed
+)
+
+func (ledType LedType) String() string {
+	if ledType < RedLed || ledType > BlueLed {
+		return "Unsupported LED type"
+	}
+    return [...]string{"RED", "GREEN", "BLUE"}[ledType]
+}
+
+//export LedChange
+func LedChange(isLeftPort bool, ledType LedType, turnOn bool) error {
+	ledCommand := string(ledType)
+	if ledCommand == "Unsupported LED type" {
+		return fmt.Errorf(ledCommand)
+	}
+
+	switch turnOn {
+	case true:
+		ledCommand += "_ON"
+	case false:
+		ledCommand += "_OFF"
+	}
+
+	return runCommand(isLeftPort, ledCommand)
+}
+
 func main() {
 	commands, err := zones.ParseXML("input.xml")
 	if err != nil {
