@@ -1,5 +1,7 @@
 package main
 
+import "C"
+
 import (
 	"bufio"
 	"fmt"
@@ -56,6 +58,55 @@ func findLeftRightPorts(commands map[string]*zones.Command) (*boards.Port, *boar
 	}
 
 	return leftPort, rightPort, nil
+}
+
+// //export add
+// func add(left int, right int) int {
+// 	return left + right
+// }
+
+func runCommand(isLeftPort bool, commandName string) error {
+	commands, err := zones.ParseXML("input.xml")
+	if err != nil {
+		return fmt.Errorf("Could not parse xml, encountered error!")
+	}
+
+	leftPort, rightPort, err := findLeftRightPorts(commands)
+	if err != nil {
+		return err
+	}
+	if leftPort == nil && rightPort == nil {
+		return fmt.Errorf("Error: boards not found")
+	}
+
+	var currPort *boards.Port
+	switch isLeftPort {
+	case true:
+		if leftPort == nil {
+			
+			return fmt.Errorf("Error: left board not found")
+		}
+		currPort = leftPort
+	case false:
+		if rightPort == nil {
+			return fmt.Errorf("Error: right board not found")
+		}
+		currPort = rightPort
+	}
+
+	switch commandName {
+	case "LOAD_FROM_FILE":
+		currPort.SendCommandsFromFile("example.txt")
+	default:
+		neededCommand, found := commands[commandName]
+		if !found {
+			return fmt.Errorf("Error: %s\n", customError.CommandNotFoundError)
+		}
+
+		currPort.SendCommand(neededCommand)
+	}
+
+	return nil
 }
 
 func main() {
