@@ -1,5 +1,6 @@
 package main
 
+//#include <stdlib.h>
 import "C"
 
 import (
@@ -66,6 +67,7 @@ func findLeftRightPorts(commands map[string]*zones.Command) (*boards.Port, *boar
 // }
 
 func runCommand(isLeftPort bool, commandName string) error {
+	fmt.Printf("Trying to run command %s\n", commandName)
 	commands, err := zones.ParseXML("input.xml")
 	if err != nil {
 		return fmt.Errorf("Could not parse xml, encountered error!")
@@ -121,14 +123,14 @@ func (ledType LedType) String() string {
 	if ledType < RedLed || ledType > BlueLed {
 		return "Unsupported LED type"
 	}
-    return [...]string{"RED", "GREEN", "BLUE"}[ledType]
+    return [...]string{"LED_RED", "LED_GREEN", "LED_BLUE"}[ledType]
 }
 
 //export LedChange
-func LedChange(isLeftPort bool, ledType LedType, turnOn bool) error {
-	ledCommand := string(ledType)
+func LedChange(isLeftPort bool, ledType LedType, turnOn bool) *C.char {
+	ledCommand := ledType.String()
 	if ledCommand == "Unsupported LED type" {
-		return fmt.Errorf(ledCommand)
+		return C.CString("Error: " + ledCommand)
 	}
 
 	switch turnOn {
@@ -138,7 +140,10 @@ func LedChange(isLeftPort bool, ledType LedType, turnOn bool) error {
 		ledCommand += "_OFF"
 	}
 
-	return runCommand(isLeftPort, ledCommand)
+	result := runCommand(isLeftPort, ledCommand).Error()
+	resultAsCstring := C.CString(result)
+	// defer C.free(unsafe.Pointer(resultAsCstring))
+	return resultAsCstring
 }
 
 func main() {

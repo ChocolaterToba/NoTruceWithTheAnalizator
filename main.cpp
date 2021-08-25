@@ -1,7 +1,8 @@
 #include "stdio.h"
-#include "awesome.h"
+#include "lib/whatever.h"
 
 int main() {
-    LedChange(true, 1, true);
+    char* result = LedChange(true, 1, true);
+    printf("%s\n", result);
     return 0;
 }
